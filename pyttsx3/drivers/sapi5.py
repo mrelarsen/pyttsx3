@@ -42,6 +42,7 @@ class SAPI5Driver(object):
         self._looping = False
         self._speaking = False
         self._stopping = False
+        self._paused = False;
         # initial rate
         self._rateWpm = 200
         self.setProperty('voice', self.getProperty('voice'))
@@ -53,7 +54,10 @@ class SAPI5Driver(object):
         self._proxy.setBusy(True)
         self._proxy.notify('started-utterance')
         self._speaking = True
-        self._tts.Speak(fromUtf8(toUtf8(text)))
+        # call this async otherwise this blocks the callbacks
+        # see SpeechVoiceSpeakFlags: https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ms720892%28v%3dvs.85%29
+        # and Speak : https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ms723609(v=vs.85)
+        self._tts.Speak(fromUtf8(toUtf8(text)), 1) # -> stream_number as described in the remarks of the documentation
 
     def stop(self):
         if not self._speaking:
@@ -61,6 +65,14 @@ class SAPI5Driver(object):
         self._proxy.setBusy(True)
         self._stopping = True
         self._tts.Speak('', 3)
+    
+    def togglePause(self,  pause = None):
+        if self._paused and pause == None or pause == False:
+            self._tts.Resume();
+            self._paused = False;
+        elif pause == None or pause == True:
+            self._tts.Pause();
+            self._paused = True;
 
     def save_to_file(self, text, filename):
         cwd = os.getcwd()
@@ -149,13 +161,17 @@ class SAPI5DriverEventSink(object):
         self._driver = driver
 
     def _ISpeechVoiceEvents_StartStream(self, char, length):
-        self._driver._proxy.notify(
-            'started-word', location=char, length=length)
+        # Create duplication but is needed, so is kept empty
+        pass
 
     def _ISpeechVoiceEvents_EndStream(self, stream, pos):
         d = self._driver
         if d._speaking:
-            d._proxy.notify('finished-utterance', completed=not d._stopping)
+            d._proxy.notify('finished-utterance', completed=not d._stopping and d._speaking)
         d._speaking = False
         d._stopping = False
         d._proxy.setBusy(False)
+
+    def _ISpeechVoiceEvents_Word(self, stream_number, stream_position, char, length):
+        self._driver._proxy.notify(
+            'started-word', location=char, length=length)

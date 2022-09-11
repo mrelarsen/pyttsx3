@@ -34,6 +34,9 @@ class Engine(object):
         self._driverLoop = True
         self._debug = debug
 
+    def is_running(self):
+        return self.proxy.is_running();
+
     def _notify(self, topic, **kwargs):
         """
         Invokes callbacks for an event topic.
@@ -107,6 +110,9 @@ class Engine(object):
         Stops the current utterance and clears the event queue.
         """
         self.proxy.stop()
+
+    def togglePause(self, pause = None):
+        self.proxy.togglePause(pause);
 
     def save_to_file(self, text, filename, name=None):
         '''

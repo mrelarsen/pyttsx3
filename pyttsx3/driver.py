@@ -63,6 +63,9 @@ class DriverProxy(object):
             self._driver.destroy()
         except (AttributeError, TypeError):
             pass
+    
+    def is_running(self):
+        return self._driver._speaking;
 
     def _push(self, mtd, args, name=None):
         '''
@@ -149,6 +152,9 @@ class DriverProxy(object):
                 break
             self._queue.pop(0)
         self._driver.stop()
+
+    def togglePause(self, pause = None):
+        self._driver.togglePause(pause);
 
     def save_to_file(self, text, filename, name):
         '''
